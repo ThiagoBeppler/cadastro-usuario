@@ -45,9 +45,13 @@ com.example.cadastro_usuario (pacote gerado pelo Initializr, mantido)
 - Não faça commits sem eu autorizar; eu reviso o diff antes.
 - Ao terminar uma etapa, rode `./mvnw test` e mostre o resultado.
 - Explique decisões não óbvias em uma ou duas frases, para eu registrar no README.
-- O README é escrito só no final do projeto.
+- O README.md já existe e documenta decisões, testes e opções de frontend. Atualize-o se o comportamento mudar.
+
+## Estado do projeto
+Todas as etapas do roteiro estão feitas: fundação (H2 + Flyway), domínio e persistência, service com e-mail pós-commit, controller com DTOs e ProblemDetail, segurança JWT, Swagger e README. A API exige token em tudo, exceto `POST /usuarios`, `POST /auth/login` e as rotas do Swagger.
 
 ## Comandos
 - O Java do PATH pode ser o 17; o projeto exige 21. Aponte `JAVA_HOME` para um JDK 21 antes de rodar o Maven.
 - Build e testes: ./mvnw clean verify
 - Rodar app: ./mvnw spring-boot:run
+- Swagger UI: http://localhost:8080/swagger-ui.html
