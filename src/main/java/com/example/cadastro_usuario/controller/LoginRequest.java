@@ -1,8 +1,12 @@
 package com.example.cadastro_usuario.controller;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
 public record LoginRequest(
+        @Schema(example = "maria@exemplo.com")
         @NotBlank(message = "é obrigatório") String email,
+
+        @Schema(example = "senha123")
         @NotBlank(message = "é obrigatória") String senha) {
 }
