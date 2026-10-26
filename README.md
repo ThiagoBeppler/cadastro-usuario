@@ -125,10 +125,24 @@ O `UsuarioService` só publica um evento (`ApplicationEventPublisher`) e não co
 - 401 e 403 também saem como `ProblemDetail`.
 
 **Limitações assumidas:**
-- Não há perfis: qualquer usuário autenticado consulta e edita qualquer outro. O enunciado não pede papéis.
+- Não há perfis e não há dono do cadastro: qualquer usuário autenticado consulta e edita qualquer outro. O enunciado não especifica essa regra (veja a seção abaixo).
 - Um token continua válido até expirar, e não há como revogá-lo antes. A API não tem exclusão de usuário, mas, se passasse a ter, o token de um usuário apagado seguiria valendo até o fim da validade. Revogar exigiria refresh token ou uma lista de bloqueio.
 - Não há limite de tentativas de login.
 - O CORS não está configurado. Um frontend em outra origem precisará disso (veja a seção de frontend).
+
+### Quem pode editar quem
+
+O enunciado pede "acesso restrito", mas **não especifica que cada usuário só pode editar o próprio cadastro**. Por isso a regra implementada é a mais simples: qualquer usuário autenticado pode chamar `PUT /usuarios/{id}` para qualquer id. Acrescentar uma regra de propriedade que ninguém pediu seria uma decisão de negócio minha, e preferi deixar isso explícito em vez de decidir sozinho.
+
+**Se essa restrição for necessária,** a mudança é pequena e fica concentrada na segurança. Ela seria feita assim:
+
+1. **Guardar o id no token.** Hoje o JWT leva só o e-mail em `sub`. Eu acrescentaria uma claim `uid` com o id do usuário, preenchida pelo `TokenService` no login. Isso é necessário porque o e-mail pode ser trocado na edição, e comparar por e-mail deixaria um token antigo apontando para um endereço que já não existe.
+2. **Comparar o dono com o alvo.** No `PUT /usuarios/{id}`, ler o `uid` do token e comparar com o `id` da rota (por exemplo, com `@PreAuthorize("#id == authentication.token.claims['uid']")`, ou uma verificação direta no controller).
+3. **Responder 403.** Quando forem diferentes, lançar `AccessDeniedException` e acrescentar um tratador no `GlobalExceptionHandler`. Sem ele, uma exceção lançada dentro do controller viraria 500, e não 403 em `ProblemDetail`.
+4. **Testes.** Editar a própria conta devolve 200, editar a de outro devolve 403, e sem token continua devolvendo 401. O teste de integração de segurança ganha esses cenários.
+5. **Decidir a consulta.** `GET /usuarios` e `GET /usuarios/{id}` continuariam abertos a qualquer autenticado, o que costuma ser o esperado numa listagem. Se a regra também valesse para a leitura, o mesmo mecanismo se aplicaria ao `GET /usuarios/{id}`.
+
+Papéis (por exemplo, um administrador que edita qualquer conta) seriam uma extensão natural: uma claim `roles` no token e a regra passaria a ser "o dono ou um administrador".
 
 ## Banco de dados
 
