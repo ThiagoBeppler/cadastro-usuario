@@ -66,7 +66,7 @@ curl "http://localhost:8080/usuarios?nome=ria&page=0&size=10" \
 | `POST /usuarios` | Público | Cadastra um usuário (201 com `Location`) |
 | `PUT /usuarios/{id}` | Token | Edita nome, e-mail e, opcionalmente, a senha |
 | `GET /usuarios/{id}` | Token | Consulta por id |
-| `GET /usuarios?nome=&page=&size=&sort=` | Token | Lista com paginação. `nome` filtra por qualquer parte do nome, sem diferenciar maiúsculas. Padrão: página 0, tamanho 10, ordenada por nome. Máximo: 100 por página. |
+| `GET /usuarios?nome=&page=&size=&sort=` | Token | Lista com paginação. `nome` filtra por qualquer parte do nome, sem diferenciar maiúsculas. Padrão: página 0, tamanho 10, ordenada por nome. Máximo: 100 por página; um `size` maior é reduzido a 100, sem erro. |
 
 Os erros seguem o formato `ProblemDetail` (RFC 7807). A validação inclui um campo `erros` com a mensagem de cada campo. Mapeamento: 400 dados inválidos, 401 sem autenticação ou credenciais erradas, 404 usuário inexistente, 409 e-mail já cadastrado.
 
@@ -100,7 +100,7 @@ sequenceDiagram
     S->>DB: save
     S->>S: publishEvent (fica em espera)
     S->>DB: COMMIT
-    DB-->>L: evento entregue (AFTER_COMMIT)
+    S-->>L: depois do commit, o Spring entrega o evento (AFTER_COMMIT)
     L->>E: enviar(...)
     Note over L,E: se falhar, só registra no log
     S-->>C: 201 Created
@@ -126,7 +126,7 @@ O `UsuarioService` só publica um evento (`ApplicationEventPublisher`) e não co
 
 **Limitações assumidas:**
 - Não há perfis: qualquer usuário autenticado consulta e edita qualquer outro. O enunciado não pede papéis.
-- Um token continua válido até expirar, mesmo que o usuário seja apagado. Revogar exigiria refresh token ou uma lista de bloqueio.
+- Um token continua válido até expirar, e não há como revogá-lo antes. A API não tem exclusão de usuário, mas, se passasse a ter, o token de um usuário apagado seguiria valendo até o fim da validade. Revogar exigiria refresh token ou uma lista de bloqueio.
 - Não há limite de tentativas de login.
 - O CORS não está configurado. Um frontend em outra origem precisará disso (veja a seção de frontend).
 
@@ -139,21 +139,21 @@ O `UsuarioService` só publica um evento (`ApplicationEventPublisher`) e não co
 
 ## Testes
 
-Rodam com `./mvnw test`: **57 testes**, todos no H2, sem dependência externa. A motivação foi cobrir cada camada no nível certo e, principalmente, provar a regra central com banco e transação reais, e não só com mocks.
+Rodam com `./mvnw test`, todos no H2, sem dependência externa. A motivação foi cobrir cada camada no nível certo e, principalmente, provar a regra central com banco e transação reais, e não só com mocks.
 
-| Classe | Testes | Por que existe |
-|---|---|---|
-| `UsuarioRepositoryTest` (`@DataJpaTest`) | 10 | O filtro por parte do nome (meio do nome, maiúsculas, sem resultado), a paginação, a checagem de e-mail (inclusive "é o próprio usuário"), a constraint única do banco e o preenchimento das datas. Também prova que a entidade e a migration batem. |
-| `UsuarioServiceTest` (Mockito) | 10 | As regras: cadastro com BCrypt e evento, e-mail duplicado sem gravar nem publicar, edição com e sem senha, e-mail de outro usuário, id inexistente e a listagem com e sem filtro. |
-| `UsuarioEmailListenerTest` (Mockito) | 2 | O listener envia ao destinatário certo, e uma falha de envio não se propaga. |
-| `UsuarioEmailTransacaoTest` (`@SpringBootTest`) | 3 | **A regra central, com banco e transação reais:** o commit envia exatamente um e-mail, o rollback não envia nenhum e a falha no envio mantém o usuário gravado. |
-| `UsuarioControllerTest` (`@WebMvcTest`) | 11 | Status e cabeçalhos de cada endpoint, a senha ausente em todas as respostas, as mensagens de validação por campo e o JSON malformado ou id inválido. |
-| `AuthControllerTest` (`@WebMvcTest`) | 3 | Login correto, credenciais inválidas com mensagem única e campos ausentes. |
-| `TokenServiceTest` | 3 | O token traz o e-mail e a expiração, não vale com outro segredo, e um segredo curto é rejeitado na subida. |
-| `UsuarioDetailsServiceTest` (Mockito) | 2 | Usuário existente devolve o hash, e e-mail inexistente lança a exceção certa. |
-| `SegurancaApiTest` (`@SpringBootTest`) | 7 | O fluxo completo cadastra, faz login e usa o token. Sem token dá 401, e token adulterado ou expirado também. O cadastro continua público. |
-| `DocumentacaoApiTest` (`@SpringBootTest`) | 5 | O documento OpenAPI é gerado sem token, declara o Bearer e marca como protegidas só as rotas certas. |
-| `CadastroUsuarioApplicationTests` | 1 | A aplicação sobe, com Flyway e segurança. |
+| Classe | Por que existe |
+|---|---|
+| `UsuarioRepositoryTest` (`@DataJpaTest`) | O filtro por parte do nome (meio do nome, maiúsculas, sem resultado), a paginação, a checagem de e-mail (inclusive "é o próprio usuário"), a constraint única do banco e o preenchimento das datas. Também prova que a entidade e a migration batem. |
+| `UsuarioServiceTest` (Mockito) | As regras: cadastro com BCrypt e evento, e-mail duplicado sem gravar nem publicar, edição com e sem senha, e-mail de outro usuário, id inexistente e a listagem com e sem filtro. |
+| `UsuarioEmailListenerTest` (Mockito) | O listener envia ao destinatário certo, e uma falha de envio não se propaga. |
+| `UsuarioEmailTransacaoTest` (`@SpringBootTest`) | **A regra central, com banco e transação reais:** o commit envia exatamente um e-mail, o rollback não envia nenhum e a falha no envio mantém o usuário gravado. |
+| `UsuarioControllerTest` (`@WebMvcTest`) | Status e cabeçalhos de cada endpoint, a senha ausente em todas as respostas, as mensagens de validação por campo e o JSON malformado ou id inválido. |
+| `AuthControllerTest` (`@WebMvcTest`) | Login correto, credenciais inválidas com mensagem única e campos ausentes. |
+| `TokenServiceTest` | O token traz o e-mail e a expiração, não vale com outro segredo, e um segredo curto é rejeitado na subida. |
+| `UsuarioDetailsServiceTest` (Mockito) | Usuário existente devolve o hash, e e-mail inexistente lança a exceção certa. |
+| `SegurancaApiTest` (`@SpringBootTest`) | O fluxo completo cadastra, faz login e usa o token. Sem token dá 401, e token adulterado ou expirado também. O cadastro continua público. |
+| `DocumentacaoApiTest` (`@SpringBootTest`) | O documento OpenAPI é gerado sem token, declara o Bearer e marca como protegidas só as rotas certas. |
+| `CadastroUsuarioApplicationTests` | A aplicação sobe, com Flyway e segurança. |
 
 Os testes seguem o padrão `deveFazerXQuandoY`, com a estrutura given/when/then.
 

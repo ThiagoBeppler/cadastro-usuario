@@ -52,6 +52,7 @@ Todas as etapas do roteiro estão feitas: fundação (H2 + Flyway), domínio e p
 
 ## Comandos
 - O Java do PATH pode ser o 17; o projeto exige 21. Aponte `JAVA_HOME` para um JDK 21 antes de rodar o Maven.
+- Variável de ambiente `JWT_SECRET`: segredo HS256 do JWT, com pelo menos 32 bytes. Há um valor padrão só para desenvolvimento.
 - Build e testes: ./mvnw clean verify
 - Rodar app: ./mvnw spring-boot:run
 - Swagger UI: http://localhost:8080/swagger-ui.html
