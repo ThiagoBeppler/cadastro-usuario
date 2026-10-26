@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -28,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -45,6 +47,9 @@ class UsuarioControllerTest {
 
     @MockitoBean
     private UsuarioService service;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     private Usuario usuario(Long id, String nome, String email) {
         Usuario usuario = new Usuario(nome, email, "hash-que-nao-pode-vazar");
@@ -79,7 +84,7 @@ class UsuarioControllerTest {
         when(service.buscarPorId(1L)).thenReturn(usuario(1L, "Maria", "maria@teste.com"));
 
         // when / then
-        mockMvc.perform(get("/usuarios/1"))
+        mockMvc.perform(get("/usuarios/1").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.senha").doesNotExist())
                 .andExpect(content().string(not(containsString("hash-que-nao-pode-vazar"))));
@@ -114,7 +119,7 @@ class UsuarioControllerTest {
     @Test
     void deveRetornar400EmPortuguesQuandoIdNaoForNumerico() throws Exception {
         // given / when / then
-        mockMvc.perform(get("/usuarios/abc"))
+        mockMvc.perform(get("/usuarios/abc").with(jwt()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Requisição inválida"))
                 .andExpect(jsonPath("$.detail").value("Parâmetro 'id' inválido"));
@@ -144,7 +149,7 @@ class UsuarioControllerTest {
                 .thenReturn(usuario(1L, "Maria Souza", "maria@teste.com"));
 
         // when / then
-        mockMvc.perform(put("/usuarios/1")
+        mockMvc.perform(put("/usuarios/1").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"nome":"Maria Souza","email":"maria@teste.com"}
@@ -161,7 +166,7 @@ class UsuarioControllerTest {
                 .thenThrow(new UsuarioNaoEncontradoException(99L));
 
         // when / then
-        mockMvc.perform(put("/usuarios/99")
+        mockMvc.perform(put("/usuarios/99").with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"nome":"Maria","email":"maria@teste.com"}
@@ -176,7 +181,7 @@ class UsuarioControllerTest {
         when(service.buscarPorId(1L)).thenReturn(usuario(1L, "Maria", "maria@teste.com"));
 
         // when / then
-        mockMvc.perform(get("/usuarios/1"))
+        mockMvc.perform(get("/usuarios/1").with(jwt()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.email").value("maria@teste.com"));
@@ -188,7 +193,7 @@ class UsuarioControllerTest {
         when(service.buscarPorId(99L)).thenThrow(new UsuarioNaoEncontradoException(99L));
 
         // when / then
-        mockMvc.perform(get("/usuarios/99"))
+        mockMvc.perform(get("/usuarios/99").with(jwt()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.title").value("Usuário não encontrado"));
     }
@@ -201,7 +206,7 @@ class UsuarioControllerTest {
                 .thenReturn(new PageImpl<>(List.of(usuario(1L, "Maria", "maria@teste.com")), pedido, 6));
 
         // when
-        mockMvc.perform(get("/usuarios").param("nome", "ari").param("page", "1").param("size", "5"))
+        mockMvc.perform(get("/usuarios").with(jwt()).param("nome", "ari").param("page", "1").param("size", "5"))
                 // then
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].nome").value("Maria"))

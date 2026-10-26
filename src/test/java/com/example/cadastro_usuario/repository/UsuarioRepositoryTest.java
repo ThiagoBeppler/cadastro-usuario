@@ -83,6 +83,28 @@ class UsuarioRepositoryTest {
     }
 
     @Test
+    void deveRetornarUsuarioQuandoBuscarPorEmailExistente() {
+        // given
+        salvar("Maria Silva", "maria@teste.com");
+
+        // when
+        var resultado = repository.findByEmail("maria@teste.com");
+
+        // then
+        assertThat(resultado).isPresent();
+        assertThat(resultado.get().getNome()).isEqualTo("Maria Silva");
+    }
+
+    @Test
+    void deveRetornarVazioQuandoBuscarPorEmailInexistente() {
+        // given / when
+        var resultado = repository.findByEmail("ninguem@teste.com");
+
+        // then
+        assertThat(resultado).isEmpty();
+    }
+
+    @Test
     void deveRetornarTrueQuandoEmailJaExiste() {
         // given
         salvar("Maria Silva", "maria@teste.com");

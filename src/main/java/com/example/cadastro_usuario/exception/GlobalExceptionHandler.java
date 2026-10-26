@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -59,6 +60,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 HttpStatus.BAD_REQUEST, "Parâmetro '" + ex.getPropertyName() + "' inválido");
         problema.setTitle("Requisição inválida");
         return handleExceptionInternal(ex, problema, headers, status, request);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail tratarFalhaDeAutenticacao(AuthenticationException ex) {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(
+                HttpStatus.UNAUTHORIZED, "E-mail ou senha inválidos");
+        problema.setTitle("Não autenticado");
+        return problema;
     }
 
     @ExceptionHandler(EmailJaCadastradoException.class)
