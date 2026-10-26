@@ -95,9 +95,29 @@ class UsuarioControllerTest {
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.erros.nome").exists())
-                .andExpect(jsonPath("$.erros.email").exists())
-                .andExpect(jsonPath("$.erros.senha").exists());
+                .andExpect(jsonPath("$.erros.nome").value("é obrigatório"))
+                .andExpect(jsonPath("$.erros.email").value("e-mail inválido"))
+                .andExpect(jsonPath("$.erros.senha").value("deve ter entre 6 e 72 caracteres"));
+    }
+
+    @Test
+    void deveRetornar400EmPortuguesQuandoJsonMalformado() throws Exception {
+        // given / when / then
+        mockMvc.perform(post("/usuarios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Requisição inválida"))
+                .andExpect(jsonPath("$.detail").value("Corpo da requisição inválido ou malformado"));
+    }
+
+    @Test
+    void deveRetornar400EmPortuguesQuandoIdNaoForNumerico() throws Exception {
+        // given / when / then
+        mockMvc.perform(get("/usuarios/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Requisição inválida"))
+                .andExpect(jsonPath("$.detail").value("Parâmetro 'id' inválido"));
     }
 
     @Test

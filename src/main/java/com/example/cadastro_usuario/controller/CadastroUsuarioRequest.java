@@ -5,7 +5,16 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record CadastroUsuarioRequest(
-        @NotBlank @Size(max = 150) String nome,
-        @NotBlank @Email @Size(max = 150) String email,
-        @NotBlank @Size(min = 6, max = 72) String senha) {
+        @NotBlank(message = "é obrigatório")
+        @Size(max = 150, message = "deve ter no máximo {max} caracteres")
+        String nome,
+
+        @NotBlank(message = "é obrigatório")
+        @Email(message = "e-mail inválido")
+        @Size(max = 150, message = "deve ter no máximo {max} caracteres")
+        String email,
+
+        @NotBlank(message = "é obrigatória")
+        @Size(min = 6, max = 72, message = "deve ter entre {min} e {max} caracteres")
+        String senha) {
 }
